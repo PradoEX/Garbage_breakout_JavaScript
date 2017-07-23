@@ -1,0 +1,201 @@
+<canvas id="ctx" width="800" height="600" style="border:1px solid; #000000;"></canvas>
+<script>
+var ctx = document.getElementById("ctx").getContext("2d");
+//######################################################
+var timeWhenGameStarted = Date.now();//return time in ms
+var frameCount = 0;
+const WIDTH = 800;
+const HEIGHT = 600;
+var GAME_STATE = "Playing";
+
+var keyLeft = false;
+var keyRight = false;
+//######################################################
+PlayerPad = function(life, color, x, y, speedx, speedy, frameWidth, frameHeight, hitWidth, hitHeight){
+    var self = {
+        life:life, 
+        color:color, 
+        x:x, 
+        y:y, 
+        speedx:speedx, 
+        speedy:speedy, 
+        frameWidth:frameWidth, 
+        frameHeight:frameHeight, 
+        hitWidth:hitWidth, 
+        hitHeight:hitHeight,
+    };
+
+    self.update = function(){
+        self.speedx = 0;
+        if(keyLeft === true && self.x >= self.frameWidth/2){
+            self.speedx = -5;
+        }
+        if(keyRight === true && self.x <= WIDTH - self.frameWidth/2){
+            self.speedx = 5;
+        }
+        self.x += self.speedx;
+        self.y += self.speedy;
+    }
+    self.draw = function(){
+        ctx.save();
+		ctx.fillStyle = self.color;
+		ctx.fillRect(self.x - self.frameWidth/2, self.y - self.frameHeight/2, self.frameWidth, self.frameHeight);
+		ctx.restore();
+    }
+
+    return self;
+}
+Ball = function(color, x, y, speedx, speedy, frameRadius, hitRadius){
+    var self = {
+        color:color, 
+        x:x, 
+        y:y, 
+        speedx:speedx, 
+        speedy:speedy, 
+        frameRadius:frameRadius,
+        hitRadius:hitRadius,
+    };
+    self.update = function(){
+        if(self.x + self.hitRadius >= WIDTH || self.x - self.hitRadius <= 0){
+            self.speedx *= -1;
+        }
+        if(self.y - self.hitRadius <= 0){
+            self.speedy *= -1;
+        }
+
+        self.x += self.speedx;
+        self.y += self.speedy;
+        if(self.y - self.hitRadius > HEIGHT){
+            onDeath();
+        }
+    }
+    self.draw = function(){
+        ctx.save();
+        ctx.fillStyle = self.color;
+        ctx.beginPath();
+        ctx.arc(self.x, self.y, self.frameRadius, 0, 2 * Math.PI); //context.arc(x,y,r,sAngle,eAngle,counterclockwise);
+        ctx.fill();
+        ctx.restore();
+    }
+    return self;
+}
+document.onkeydown = function(event){
+	if(event.keyCode === 37)	//Left arrow
+		keyLeft = true;
+    if(event.keyCode === 39)	//Right arrow
+        keyRight = true;
+}
+document.onkeyup = function(event){
+	if(event.keyCode === 37)	//Left arrow
+		keyLeft = false;
+    if(event.keyCode === 39)	//Right arrow
+        keyRight = false;
+}
+CircleRectColliding = function(circle,rect){
+    var distX = Math.abs(circle.x - rect.x);
+    var distY = Math.abs(circle.y - rect.y);
+
+    if (distX > (rect.hitWidth/2 + circle.hitRadius)) { return false; }
+    if (distY > (rect.hitHeight/2 + circle.hitRadius)) { return false; }
+
+    if (distX <= (rect.hitWidth/2)) { return true; } 
+    if (distY <= (rect.hitHeight/2)) { return true; }
+
+    var dx=distX-rect.hitWidth/2;
+    var dy=distY-rect.hitHeight/2;
+    return (dx*dx+dy*dy <= (circle.hitRadius*circle.hitRadius));
+}
+defineInitialBallDir = function(){
+    if(Math.random() <= 0.5)
+        Ball.speedx *= -1;
+}
+onDeath = function(){
+    if(PlayerPad.life <= 0){
+        GAME_STATE = "Game_over";
+    }else{
+        PlayerPad.life--;
+        Ball.x = WIDTH/2;
+        Ball.y = HEIGHT - 200;
+        Ball.speedx = 4;
+        Ball.speedy = 2;
+        defineInitialBallDir();
+    }
+}
+drawBricks = function drawBricks(){
+    for(c=0; c<brickColumnCount; c++){
+        for(r=0; r<brickRowCount; r++){
+            if(bricks[c][r].hp >= 1){
+                var brickX = ((r*(brickWidth+brickPadding))+brickOffsetLeft) + brickWidth/2;
+                var brickY = ((c*(brickHeight+brickPadding))+brickOffsetTop) + brickHeight/2;
+                bricks[c][r].x = brickX;
+                bricks[c][r].y = brickY;
+                ctx.beginPath();
+                ctx.rect(brickX, brickY, brickWidth, brickHeight);
+                ctx.fillStyle = "#0095DD";
+                ctx.fill();
+                ctx.closePath();
+            }
+        }
+    }
+}
+update = function(){
+    if(GAME_STATE === "Playing"){
+        ctx.clearRect(0, 0, WIDTH, HEIGHT);
+        frameCount++;
+        if(CircleRectColliding(Ball, PlayerPad)){
+            Ball.speedy *= -1;
+            Ball.speedx = Math.random()*3;
+        }
+        for(c=0; c<brickColumnCount; c++){
+            for(r=0; r<brickRowCount; r++){
+                if(bricks[c][r].hp >= 1 && CircleRectColliding(Ball, bricks[c][r])){
+                    bricks[c][r].hp--;
+                    Ball.speedy *= -1;
+                }
+            }
+        }
+        PlayerPad.update();
+        Ball.update();
+        Ball.draw();
+        PlayerPad.draw();
+        drawBricks();
+    }
+    if(GAME_STATE === "Game_over"){
+        console.log("test");
+        ctx.save();
+        ctx.font = "30px Arial";
+        ctx.fillStyle = "green";
+        ctx.textAlign = "center";
+        ctx.fillText("GAME OVER", WIDTH/2, HEIGHT/2);
+        ctx.restore();
+    }
+}
+//######################################################
+var PlayerPad = PlayerPad(3, "blue", WIDTH/2, HEIGHT - 40, 0, 0, 80, 20, 80, 20);
+var Ball = Ball("blue", WIDTH/2, HEIGHT - 100, 4, -2, 10, 10);
+var bricks = [];
+var brickRowCount = 8;
+var brickColumnCount = 6;
+var brickWidth = 75;
+var brickHeight = 20;
+var brickPadding = 10;
+var brickOffsetTop = 30;
+var brickOffsetLeft = 30;
+for(var c = 0; c < brickColumnCount; c++){ //Insert pum here
+    bricks[c] = [];
+    for(var r = 0; r < brickRowCount; r++){
+        bricks[c][r] = {
+            x: 0,
+            y: 0,
+            hp: 1,
+            powerUp: 0,
+            score: 100,
+            hitWidth: brickWidth,
+            hitHeight: brickHeight,
+        };
+    }
+}
+
+defineInitialBallDir();
+setInterval(update, 20);
+</script>
