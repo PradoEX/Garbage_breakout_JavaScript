@@ -27,10 +27,10 @@ PlayerPad = function(life, color, x, y, speedx, speedy, frameWidth, frameHeight,
 
     self.update = function(){
         self.speedx = 0;
-        if(keyLeft === true && self.x >= self.frameWidth/2){
+        if(keyLeft === true && self.x >= 0){
             self.speedx = -5;
         }
-        if(keyRight === true && self.x <= WIDTH - self.frameWidth/2){
+        if(keyRight === true && self.x <= WIDTH - self.frameWidth){
             self.speedx = 5;
         }
         self.x += self.speedx;
@@ -39,7 +39,7 @@ PlayerPad = function(life, color, x, y, speedx, speedy, frameWidth, frameHeight,
     self.draw = function(){
         ctx.save();
 		ctx.fillStyle = self.color;
-		ctx.fillRect(self.x - self.frameWidth/2, self.y - self.frameHeight/2, self.frameWidth, self.frameHeight);
+		ctx.fillRect(self.x, self.y, self.frameWidth, self.frameHeight);
 		ctx.restore();
     }
 
@@ -91,19 +91,13 @@ document.onkeyup = function(event){
     if(event.keyCode === 39)	//Right arrow
         keyRight = false;
 }
-CircleRectColliding = function(circle,rect){
-    var distX = Math.abs(circle.x - rect.x);
-    var distY = Math.abs(circle.y - rect.y);
+CircleRectColliding = function(circle, rect){
+var NearestX = Math.max(rect.x, Math.min(circle.x, rect.x + rect.hitWidth));
+var NearestY = Math.max(rect.y, Math.min(circle.y, rect.y + rect.hitHeight));
 
-    if (distX > (rect.hitWidth/2 + circle.hitRadius)) { return false; }
-    if (distY > (rect.hitHeight/2 + circle.hitRadius)) { return false; }
-
-    if (distX <= (rect.hitWidth/2)) { return true; } 
-    if (distY <= (rect.hitHeight/2)) { return true; }
-
-    var dx=distX-rect.hitWidth/2;
-    var dy=distY-rect.hitHeight/2;
-    return (dx*dx+dy*dy <= (circle.hitRadius*circle.hitRadius));
+var DeltaX = circle.x - Math.max(rect.x, Math.min(circle.x, rect.x + rect.hitWidth));
+var DeltaY = circle.y - Math.max(rect.y, Math.min(circle.y, rect.y + rect.hitHeight));
+return (DeltaX * DeltaX + DeltaY * DeltaY) < (circle.hitRadius * circle.hitRadius);
 }
 defineInitialBallDir = function(){
     if(Math.random() <= 0.5)
